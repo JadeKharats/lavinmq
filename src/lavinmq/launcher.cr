@@ -2,8 +2,7 @@ require "log"
 require "file"
 require "systemd"
 require "./reporter"
-require "./server"
-require "./http/http_server"
+require "./services"
 require "./log_formatter"
 require "./in_memory_backend"
 require "./data_dir_lock"
@@ -30,8 +29,8 @@ module LavinMQ
       if @config.data_dir_lock?
         @data_dir_lock = DataDirLock.new(@config.data_dir).tap &.acquire
       end
-      @amqp_server = LavinMQ::Server.new(@config.data_dir)
-      @http_server = LavinMQ::HTTP::Server.new(@amqp_server)
+      @amqp_server = Services.instance.amqp_server
+      @http_server = Services.instance.http_server
       @tls_context = create_tls_context if @config.tls_configured?
       reload_tls_context
       setup_signal_traps
