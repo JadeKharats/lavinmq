@@ -1,9 +1,10 @@
 require "json"
 require "./user"
+require "./local_user.cr"
 
 module LavinMQ
   class UserStore
-    include Enumerable({String, User})
+    include Enumerable({String, LocalUser})
     DIRECT_USER = "__direct"
     Log         = LavinMQ::Log.for "user_store"
 
@@ -12,7 +13,7 @@ module LavinMQ
     end
 
     def initialize(@data_dir : String, @replicator : Clustering::Replicator)
-      @users = Hash(String, User).new
+      @users = Hash(String, LocalUser).new
       load!
     end
 
@@ -29,7 +30,7 @@ module LavinMQ
       if user = @users[name]?
         return user
       end
-      user = User.create(name, password, "SHA256", tags)
+      user = LocalUser.create(name, password, "SHA256", tags)
       @users[name] = user
       Log.info { "Created user=#{name}" }
       save! if save
@@ -37,7 +38,7 @@ module LavinMQ
     end
 
     def add(name, password_hash, password_algorithm, tags = Array(Tag).new, save = true)
-      user = User.new(name, password_hash, password_algorithm, tags)
+      user = LocalUser.new(name, password_hash, password_algorithm, tags)
       @users[name] = user
       save! if save
       user
@@ -72,7 +73,7 @@ module LavinMQ
       save!
     end
 
-    def delete(name, save = true) : User?
+    def delete(name, save = true) : LocalUser?
       return if name == DIRECT_USER
       if user = @users.delete name
         Log.info { "Deleted user=#{name}" }
@@ -81,7 +82,7 @@ module LavinMQ
       end
     end
 
-    def default_user : User
+    def default_user : LocalUser
       @users.each_value do |u|
         if u.tags.includes?(Tag::Administrator) && !u.hidden?
           return u
@@ -113,7 +114,7 @@ module LavinMQ
       if File.exists? path
         Log.debug { "Loading users from file" }
         File.open(path) do |f|
-          Array(User).from_json(f) do |user|
+          Array(LocalUser).from_json(f) do |user|
             @users[user.name] = user
           end
           @replicator.register_file f
@@ -133,7 +134,7 @@ module LavinMQ
     end
 
     private def create_direct_user
-      @users[DIRECT_USER] = User.create_hidden_user(DIRECT_USER)
+      @users[DIRECT_USER] = LocalUser.create_hidden_user(DIRECT_USER)
       perm = {config: /.*/, read: /.*/, write: /.*/}
       @users[DIRECT_USER].permissions["/"] = perm
     end
