@@ -1,14 +1,10 @@
-require "json"
+require "./user"
 require "./password"
-require "./sortable_json"
-require "./tag"
 
 module LavinMQ
   class LocalUser < User
-    include SortableJSON
     getter name, password, permissions
     property tags, plain_text_password
-    alias Permissions = NamedTuple(config: Regex, read: Regex, write: Regex)
 
     @name : String
     @permissions = Hash(String, Permissions).new
